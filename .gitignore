@@ -1,0 +1,38 @@
+# Python virtual environment
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# ChromaDB vector store local data
+chroma_db/
+backend/chroma_db/
+docchat-ai/backend/chroma_db/
+
+# Node & Frontend dependencies & build
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Antigravity artifacts/scratch
+.gemini/
+scratch/
