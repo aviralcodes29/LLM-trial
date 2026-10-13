@@ -126,6 +126,11 @@ Verify backend health check at:
 - **Health Check**: [http://localhost:8000/health](http://localhost:8000/health) &rarr; `{"status":"ok"}`
 - **Interactive Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
+#### Run Phase 2 Ingestion Verification:
+```bash
+python test_phase2_ingestion.py
+```
+
 ---
 
 ### 3. Frontend Setup & Run
@@ -193,6 +198,43 @@ graph LR
 - `GET /documents` (and `/api/upload/documents`): Lists all indexed documents with chunk counts.
 - `GET /documents/{doc_id}/chunks`: Inspects stored chunks and metadata directly from ChromaDB.
 - `DELETE /documents/{doc_id}`: Removes a document and all its chunks from ChromaDB.
+
+---
+
+## 🔍 How RAG Retrieval & Chat Works (Phase 3)
+
+The Phase 3 retrieval pipeline answers queries strictly from document passages while guaranteeing zero hallucination.
+
+```mermaid
+graph LR
+    Q[User Question] --> E[GeminiEmbedder<br/>embed_query]
+    E --> V[ChromaDB search<br/>top-k=5 + doc_ids filter]
+    V --> T{Relevance Threshold<br/>Score &ge; 0.30?}
+    T -- None Pass --> F["Fallback Response<br/>'I couldn't find this...'"]
+    T -- Chunks Pass --> P[Strict Grounded Prompt]
+    P --> G[GeminiLLM<br/>gemini-1.5-flash]
+    G --> A[Answer + Source Citations<br/>filename, page, snippet, score]
+```
+
+### Retrieval & Grounding Stages:
+1. **Query Embedding (`services/embedder.py`)**:
+   - Computes high-dimensional dense vector representation for the user's question via `embed_query()`.
+2. **Filtered Nearest Neighbor Search (`services/vectorstore.py`)**:
+   - Searches top-5 most similar chunks using cosine distance in ChromaDB.
+   - Supports document scoping via `doc_ids` to search either globally or inside a single file.
+3. **Relevance Threshold Gate (`services/llm.py`)**:
+   - Discards chunks with similarity below the cut-off threshold (`0.30`).
+   - If no chunks pass, the LLM call is bypassed and the exact fallback is returned immediately:
+     `"I couldn't find this in the uploaded documents."`
+4. **Strict Grounding Prompt (`services/llm.py`)**:
+   - Formulates a system prompt instructing the model to rely exclusively on context passages and cite claims as `[filename, page N]`.
+5. **Debug Mode Logging (`DEBUG_MODE=true` in `.env`)**:
+   - Logs retrieved chunks (IDs, scores, pages, text preview) and the full prompt sent to the LLM.
+
+#### Run Phase 3 RAG Verification Suite:
+```bash
+python test_phase3_rag.py
+```
 
 ---
 

@@ -45,6 +45,7 @@ const FileUpload = ({ onDocumentsChange, onSelectDocument, selectedDocId }) => {
 
   useEffect(() => {
     loadDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Drag & Drop Handlers ──────────────────────────────────────────────

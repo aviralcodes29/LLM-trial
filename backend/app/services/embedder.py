@@ -12,7 +12,9 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+# pyrefly: ignore [missing-import]
 import google.generativeai as genai
+# pyrefly: ignore [missing-import]
 from google.api_core import exceptions as google_exceptions
 
 logger = logging.getLogger(__name__)
@@ -73,7 +75,7 @@ class GeminiEmbedder(BaseEmbedder):
         self.base_delay = base_delay
 
         self._is_configured = False
-        if self.api_key and not self.api_key.startswith("dummy"):
+        if self.api_key and not self.api_key.startswith("dummy") and not self.api_key.startswith("your_"):
             try:
                 genai.configure(api_key=self.api_key)
                 self._is_configured = True
@@ -160,10 +162,25 @@ class GeminiEmbedder(BaseEmbedder):
 
     @staticmethod
     def _generate_mock_embedding(text: str, dim: int = 768) -> List[float]:
-        """Generate a deterministic 768-dimensional float embedding based on text hash."""
-        seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:16], 16)
-        rng = random.Random(seed)
-        # Generate random unit vector
-        vec = [rng.gauss(0, 1) for _ in range(dim)]
+        """Generate a deterministic 768-dimensional float embedding using term feature hashing.
+
+        Preserves lexical relevance offline: chunks sharing vocabulary with a query
+        yield positive cosine similarity, while unrelated queries score near zero.
+        """
+        words = [w.strip("?,.!:;\"'").lower() for w in text.split() if len(w.strip("?,.!:;\"'")) > 2]
+        if not words:
+            seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:16], 16)
+            rng = random.Random(seed)
+            vec = [rng.gauss(0, 1) for _ in range(dim)]
+            norm = sum(x * x for x in vec) ** 0.5 or 1.0
+            return [round(x / norm, 6) for x in vec]
+
+        vec = [0.0] * dim
+        for word in words:
+            h = int(hashlib.sha256(word.encode("utf-8")).hexdigest(), 16)
+            idx = h % dim
+            sign = 1.0 if ((h >> 16) & 1) else -1.0
+            vec[idx] += sign * 1.0
+
         norm = sum(x * x for x in vec) ** 0.5 or 1.0
         return [round(x / norm, 6) for x in vec]

@@ -103,6 +103,20 @@ class BaseVectorStore(ABC):
         pass
 
 
+_shared_chroma_clients: Dict[str, Any] = {}
+
+
+def get_shared_chroma_client(persist_directory: str):
+    """Retrieve or initialize a single PersistentClient for the given directory path."""
+    if persist_directory not in _shared_chroma_clients:
+        try:
+            import chromadb
+            _shared_chroma_clients[persist_directory] = chromadb.PersistentClient(path=persist_directory)
+        except ImportError:
+            raise RuntimeError("chromadb package is not installed. Run: pip install chromadb")
+    return _shared_chroma_clients[persist_directory]
+
+
 class ChromaVectorStore(BaseVectorStore):
     """ChromaDB implementation of local, persistent vector storage."""
 
@@ -115,25 +129,20 @@ class ChromaVectorStore(BaseVectorStore):
         """
         self.persist_directory = persist_directory
         self.collection_name = collection_name
-        self._client = None
         self._collection = None
 
     def _get_collection(self):
-        """Lazy-initialize ChromaDB client and collection on first access."""
+        """Lazy-initialize ChromaDB collection on first access using shared client."""
         if self._collection is None:
-            try:
-                import chromadb
-                self._client = chromadb.PersistentClient(path=self.persist_directory)
-                self._collection = self._client.get_or_create_collection(
-                    name=self.collection_name,
-                    metadata={"hnsw:space": "cosine"},
-                )
-                logger.info(
-                    f"ChromaDB collection '{self.collection_name}' ready at '{self.persist_directory}' "
-                    f"({self._collection.count()} vectors)."
-                )
-            except ImportError:
-                raise RuntimeError("chromadb package is not installed. Run: pip install chromadb")
+            client = get_shared_chroma_client(self.persist_directory)
+            self._collection = client.get_or_create_collection(
+                name=self.collection_name,
+                metadata={"hnsw:space": "cosine"},
+            )
+            logger.info(
+                f"ChromaDB collection '{self.collection_name}' ready at '{self.persist_directory}' "
+                f"({self._collection.count()} vectors)."
+            )
         return self._collection
 
     def add_chunks(
@@ -349,3 +358,20 @@ class ChromaVectorStore(BaseVectorStore):
         except Exception as e:
             logger.error(f"Failed to fetch chunks for doc_id='{doc_id}': {e}")
             return []
+
+
+def get_vectorstore_for_user(user: Optional[Any] = None, persist_directory: Optional[str] = None) -> ChromaVectorStore:
+    """Factory to retrieve a user-isolated ChromaVectorStore collection.
+
+    Guest / unauthenticated users use the default 'docchat_docs' collection for backwards compatibility.
+    Registered authenticated users use a distinct isolated collection 'docchat_user_{user.id}'.
+    """
+    from app.config import settings
+    persist_dir = persist_directory or settings.CHROMA_PATH
+
+    if user is None or getattr(user, "username", "") == "guest":
+        collection_name = "docchat_docs"
+    else:
+        collection_name = f"docchat_user_{user.id}"
+
+    return ChromaVectorStore(persist_directory=persist_dir, collection_name=collection_name)
