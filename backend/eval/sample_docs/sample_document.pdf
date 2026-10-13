@@ -1,0 +1,115 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R] /Count 5 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 1176 >>
+stream
+BT
+/F1 11 Tf
+50 750 Td
+14 TL
+(DocChat AI Architecture & Document Loader - Page 1) '
+(DocChat AI is an enterprise-grade document intelligence platform powered by Retrieval-Augmented Generation \(RAG\). The system establishes a robust Document Ingestion Pipeline designed to parse diverse document formats, decompose them into semantically cohesive passages, compute high-dimensional vector representations, and index them into a persistent vector database.) '
+(The DocumentLoader service is responsible for ingesting files from in-memory byte buffers or the local filesystem. For Portable Document Format \(PDF\) files, the DocumentLoader uses pypdf to parse the binary object graph, inspect page dictionaries, and extract clean text streams while meticulously preserving the source page numbers. This page preservation ensures that subsequent citation modules can provide exact page-level source references for every assertion made by the language model.) '
+(The system enforces a strict maximum file upload size of 10 MB. Files exceeding 10 MB or featuring unsupported extensions are immediately rejected with an HTTP 400 Bad Request error to ensure resource integrity.) '
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 1129 >>
+stream
+BT
+/F1 11 Tf
+50 750 Td
+14 TL
+(DocChat AI Chunking & Embedding Pipeline - Page 2) '
+(Text chunking is executed by the TextChunker service. Rather than arbitrarily slicing strings at rigid byte boundaries, the chunker employs a sliding-window strategy calibrated to approximately 800 characters per chunk with an intentional 150-character overlap between adjacent segments.) '
+(This overlap prevents semantic cliff effects where critical context, sentence clauses, or named entities are split across retrieval boundaries. Furthermore, the chunker inspects natural linguistic delimiters such as paragraph breaks, sentence periods, question marks, semicolons, and commas to position segment borders naturally.) '
+(Each generated chunk is enriched with essential metadata: doc_id, filename, source page number, global chunk index, and character count. These chunks are then dispatched to the GeminiEmbedder, which batches requests into groups of 20 and interfaces with Google Gemini text-embedding-004. Rate-limiting errors such as HTTP 429 and ResourceExhausted are gracefully mitigated through exponential backoff with jitter.) '
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+8 0 obj
+<< /Length 876 >>
+stream
+BT
+/F1 11 Tf
+50 750 Td
+14 TL
+(DocChat AI Vector Storage & Persistence - Page 3) '
+(Once vector embeddings are generated, chunks and their metadata are committed to a persistent ChromaDB collection named docchat_docs via ChromaVectorStore. ChromaDB persists vector indexes to the local filesystem using Hierarchical Navigable Small World \(HNSW\) graphs configured with cosine similarity distance metrics.) '
+(The ChromaVectorStore exposes three core methods: add_chunks\(\) for upserting vectorized content with metadata, list_documents\(\) for inventorying indexed documents with aggregated chunk counts, and delete_document\(doc_id\) for atomic deletion of all vector chunks associated with an unindexed document.) '
+(This storage architecture guarantees high retrieval accuracy, sub-50ms vector query latencies, and deterministic isolation between distinct documents.) '
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 8 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+10 0 obj
+<< /Length 777 >>
+stream
+BT
+/F1 11 Tf
+50 750 Td
+14 TL
+(DocChat AI Retrieval & Grounded Generation - Page 4) '
+(The GeminiLLM service interfaces with Google Gemini 1.5 Flash to synthesize answers grounded strictly in retrieved context passages. The prompt instructs the model to answer ONLY from the provided passages and format source citations as [filename, page N].) '
+(A relevance score threshold of 0.30 is strictly enforced on retrieved chunks. If no retrieved chunk meets or exceeds this threshold, the pipeline skips the LLM call entirely and immediately returns the fallback message: "I couldn't find this in the uploaded documents.") '
+(By enforcing strict negative constraints, DocChat AI completely prevents hallucinations and avoids speculative assertions beyond the source documents.) '
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 10 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+12 0 obj
+<< /Length 752 >>
+stream
+BT
+/F1 11 Tf
+50 750 Td
+14 TL
+(DocChat AI Streaming, Memory & UX - Page 5) '
+(In Phase 4, the /chat endpoint streams responses via Server-Sent Events \(SSE\) with media type text/event-stream. The server emits progressive token events \(data: {"type": "token", "content": "..."}\), followed by a sources citation event \(data: {"type": "sources", "sources": [...]}\), and finishes with a done event.) '
+(Conversation memory maintains a sliding window of the last 6 messages per session_id. Prior to vector retrieval, follow-up queries containing pronouns or conversational ellipsis are rewritten by the LLM into standalone search queries to ensure high semantic recall. The POST /chat/clear endpoint resets the conversation memory for any session.) '
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 12 0 R /Resources << /Font << /F1 3 0 R >> >> >>
+endobj
+xref
+0 14
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000141 00000 n 
+0000000211 00000 n 
+0000001439 00000 n 
+0000001565 00000 n 
+0000002746 00000 n 
+0000002872 00000 n 
+0000003799 00000 n 
+0000003925 00000 n 
+0000004754 00000 n 
+0000004882 00000 n 
+0000005686 00000 n 
+trailer
+<< /Size 14 /Root 1 0 R >>
+startxref
+5814
+%%EOF

@@ -45,11 +45,13 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """Incoming user chat question — Phase 3 contract."""
-    question: Optional[str] = Field(None, description="User question (Phase 3)")
+    """Incoming user chat question — Phase 3 & 4 contract."""
+    question: Optional[str] = Field(None, description="User question")
     query: Optional[str] = Field(None, description="Alias for question (legacy)")
     doc_ids: Optional[List[str]] = Field(None, description="Restrict search to these doc IDs")
     chat_history: Optional[List[ChatMessage]] = Field(default_factory=list, description="Previous messages")
+    session_id: Optional[str] = Field(None, description="Conversation session ID for multi-turn memory")
+    stream: Optional[bool] = Field(False, description="Whether to stream tokens via Server-Sent Events (SSE)")
 
     def get_question(self) -> str:
         """Return the question, preferring 'question' over the legacy 'query' field."""
@@ -57,12 +59,26 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """RAG assistant answer with source citations — Phase 3 contract."""
+    """RAG assistant answer with source citations — Phase 3 & 4 contract."""
     answer: str = Field(..., description="Generated answer grounded in documents")
     sources: List[SourceCitation] = Field(
         default_factory=list,
         description="Cited document excerpts [{filename, page, snippet, score}]",
     )
+    session_id: Optional[str] = Field(None, description="Active session ID for the conversation")
+    rewritten_query: Optional[str] = Field(None, description="Standalone rewritten query used for retrieval")
+
+
+class ClearChatRequest(BaseModel):
+    """Request schema for resetting conversation session memory."""
+    session_id: Optional[str] = Field(None, description="Session ID to clear. If None, clears default session.")
+
+
+class ClearChatResponse(BaseModel):
+    """Response schema for resetting conversation session memory."""
+    status: str = "ok"
+    message: str = "Conversation session cleared successfully."
+    session_id: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -98,3 +114,58 @@ class DeleteDocumentResponse(BaseModel):
     doc_id: str
     message: str
     deleted_chunks_count: int
+
+
+# ---------------------------------------------------------------------------
+# Authentication & Usage schemas (Phase 6)
+# ---------------------------------------------------------------------------
+
+class UserRegisterRequest(BaseModel):
+    """Schema for registering a new user."""
+    username: str = Field(..., min_length=3, max_length=50, description="Unique username")
+    password: str = Field(..., min_length=6, max_length=128, description="Plaintext password")
+    email: Optional[str] = Field(None, max_length=100, description="Optional email address")
+
+
+class UserLoginRequest(BaseModel):
+    """Schema for user login credentials."""
+    username: str = Field(..., description="Username or email")
+    password: str = Field(..., description="Plaintext password")
+
+
+class UserInfo(BaseModel):
+    """Public user profile information."""
+    id: int
+    username: str
+    email: Optional[str] = None
+    is_active: bool = True
+
+
+class TokenResponse(BaseModel):
+    """JWT bearer token response upon successful registration or login."""
+    access_token: str
+    token_type: str = "bearer"
+    user: UserInfo
+
+
+class UsageRecordItem(BaseModel):
+    """An individual recorded API consumption event."""
+    id: int
+    endpoint: str
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    estimated_cost: float
+    timestamp: Optional[str] = None
+
+
+class UsageSummaryResponse(BaseModel):
+    """Aggregated usage and cost summary for a user."""
+    user_id: Optional[int] = None
+    total_requests: int
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    estimated_cost_usd: float
+    recent_records: List[UsageRecordItem] = Field(default_factory=list)
